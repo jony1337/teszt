@@ -1,0 +1,153 @@
+ASP.NET:
+1.	ASP.NET CORE WEB (MVC) projekt, Individual Accounts
+2.	Models -> Add new class (ez esetben: Aru)
+3.	[Display(Name=”Megnevezés”)], [StringLength(60)], public string Megnevezes {get; set;}, ez alapján minden más adatot megcsinálunk
+4.	Controllers -> New Scaffolded item
+5.	Models -> Add new class (Arukeres)
+6.	Megnevezes, Beszállító, Arúlista (List<Aru>), Beszállítólista(Selectlist)
+7.	RaktárControllerben átírunk dolgokat (Create-től lefelé ne felejtsük le hozzáadni az [Authorize]-t), var model = new AruKeres();, var aruk = _contect.Aru.Select(x=>x); if(!string.IsNullOrEmpty(Megnevezés)) stb stb.
+8.	Add-Migration – Update-Database
+9.	View átalakítása (Views\Aruk\Index.cshtml)
+10.	Validator? Views/Shared/_ValidationScript
+3.,
+    public class Aru
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Display(Name="Megnevezés")]
+        [StringLength(60)]
+        public string Megnevezes { get; set; }
+
+        [Display(Name = "Beszállító")]
+        [StringLength(30)]
+        public string Beszallito { get; set; }
+
+        [Display(Name = "Beszerzési ár")]
+        [Column(TypeName="decimal(10, 2)")]
+        public decimal Ar { get; set; }
+    }
+6.,
+    public class AruKeres
+    {
+        public string Megnevezes { get; set; }
+
+        public string Beszallito { get; set; }
+
+        public List<Aru> AruLista { get; set; }
+
+        public SelectList BeszallitoLista { get; set; }
+    }
+7.,
+        public async Task<IActionResult> Index(string Megnevezes, string Beszallito)
+        {
+            var model = new AruKeres();
+            var aruk = _context.Aru.Select(x => x);
+            if(!string.IsNullOrEmpty(Megnevezes))
+            {
+                aruk = aruk.Where(x => x.Megnevezes.Contains(Megnevezes));
+                model.Megnevezes = Megnevezes;
+            }
+            if (!string.IsNullOrEmpty(Beszallito))
+            {
+                aruk = aruk.Where(x => x.Beszallito == Beszallito);
+                model.Beszallito = Beszallito;
+            }
+
+            model.AruLista = await aruk.OrderBy(x => x.Megnevezes).ToListAsync();
+            model.BeszallitoLista = new SelectList(await _context.Aru.Select(x => x.Beszallito).Distinct().OrderBy(x => x).ToListAsync());
+
+            return View(model);
+  
+9.,
+@model GyakorloAruhaz.Models.AruKeres
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Termék Kereső</h1>
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">Új létrehozása</a>
+</p>
+<form asp-controller="Aruk" asp-action="Index" method="get">
+    Megnevezés:
+    <input asp-for="Megnevezes">
+
+    Beszállító:
+    <select asp-for="Beszallito" asp-items="Model.BeszallitoLista">
+        <option value="">Összes</option>
+    </select>
+    <input type="submit" value="Keresés" class="btn btn-success">
+</form>
+
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.AruLista[0].Megnevezes)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.AruLista[0].Beszallito)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.AruLista[0].Ar)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model.AruLista) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.Megnevezes)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Beszallito)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Ar)
+            </td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-primary">Szerkeszt</a> |
+                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-success">Részletek</a> |
+                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-danger">Törlés</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>      }
+10., 
+<script>
+    $.validator.methods.number = function (value, element) {
+        return this.optional(element) || /-?(?:\d+|\d{1,3}(?:[\s\.,]\d{3})+)(?:[\.,]\d+)?$/.test(value);
+    }
+</script>
+11.,
+Szebb termék kereső(8-as pontban található keresőt helyettesíti):
+<div class="container d-flex justify-content-center align-items-center mt-5 mb-5">
+    <div class="row">
+        <div class="col-lg">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h1>Termék keresés</h1>
+                    <p>
+                        <a asp-action="Create" class="btn btn-primary">Új létrehozása</a>
+                    </p>
+                    <form asp-action="Index" asp-controller="Raktar" method="get">
+                        Megnevezés:
+                        <input asp-for="Megnevezes" class="form-control" />
+
+                        Beszállító:
+                        <select asp-for="Beszallito" asp-items="Model.BeszallitoLista" class="form-control">
+                            <option value="">Összes</option>
+                        </select>
+                        <button type="submit" class="btn btn-success mt-3">Keresés</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
